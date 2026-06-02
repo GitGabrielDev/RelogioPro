@@ -41,10 +41,6 @@ Com ele você pode acompanhar o horário atual, medir intervalos com precisão u
 
 ---
 
-## 📸 Capturas de Tela
-
-Adicione aqui imagens do aplicativo:
-
 ```text
 screenshots/
 ├── horario.png
