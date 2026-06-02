@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relógio Pro</title>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:#111;
+color:#fff;
+}
+
+header{
+text-align:center;
+padding:18px;
+font-size:24px;
+background:#1c1c1c;
+font-weight:bold;
+}
+
+.tabs{
+display:flex;
+}
+
+.tabs button{
+flex:1;
+padding:14px;
+border:0;
+background:#222;
+color:#fff;
+font-size:14px;
+}
+
+.tabs button.active{
+background:#333;
+}
+
+.page{
+display:none;
+padding:20px;
+}
+
+.page.active{
+display:block;
+}
+
+.big{
+font-size:48px;
+text-align:center;
+font-weight:bold;
+}
+
+.center{
+text-align:center;
+margin-top:10px;
+}
+
+button.action{
+padding:10px 15px;
+margin:5px;
+border:0;
+border-radius:8px;
+background:#2f7fff;
+color:#fff;
+}
+
+button.danger{
+background:#ff4444;
+}
+
+input{
+width:100%;
+padding:12px;
+margin-top:10px;
+border-radius:8px;
+border:0;
+}
+</style>
+</head>
+
+<body>
+
+<header>🕒 Relógio Pro</header>
+
+<div class="tabs">
+<button class="active" onclick="openTab('clock',this)">Relógio</button>
+<button onclick="openTab('timer',this)">Timer</button>
+<button onclick="openTab('stopwatch',this)">Cronômetro</button>
+</div>
+
+<!-- RELÓGIO -->
+<div id="clock" class="page active">
+<div id="time" class="big">00:00:00</div>
+<div id="date" class="center"></div>
+</div>
+
+<!-- TIMER -->
+<div id="timer" class="page">
+<input id="minutes" type="number" placeholder="Minutos">
+<div id="timerDisplay" class="big">00:00</div>
+<div class="center">
+<button class="action" onclick="startTimer()">Iniciar</button>
+<button class="action danger" onclick="resetTimer()">Resetar</button>
+</div>
+</div>
+
+<!-- CRONÔMETRO -->
+<div id="stopwatch" class="page">
+<div id="sw" class="big">00:00:00</div>
+<div class="center">
+<button class="action" onclick="startSW()">Start</button>
+<button class="action" onclick="pauseSW()">Pause</button>
+<button class="action danger" onclick="resetSW()">Reset</button>
+</div>
+</div>
+
+<script>
+
+// Tabs
+function openTab(id,btn){
+document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+btn.classList.add("active");
+}
+
+// CLOCK
+function updateClock(){
+let d = new Date();
+document.getElementById("time").innerText =
+d.toLocaleTimeString("pt-BR");
+
+document.getElementById("date").innerText =
+d.toLocaleDateString("pt-BR",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// TIMER
+let t=0, tInt;
+
+function startTimer(){
+clearInterval(tInt);
+t = parseInt(document.getElementById("minutes").value||0)*60;
+
+tInt = setInterval(()=>{
+t--;
+updateTimer();
+if(t<=0){
+clearInterval(tInt);
+alert("Tempo acabou!");
+}
+},1000);
+}
+
+function updateTimer(){
+let m=Math.floor(t/60);
+let s=t%60;
+document.getElementById("timerDisplay").innerText=
+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
+
+function resetTimer(){
+clearInterval(tInt);
+t=0;
+updateTimer();
+}
+
+// STOPWATCH
+let sw=0, swInt;
+
+function startSW(){
+if(swInt) return;
+swInt=setInterval(()=>{
+sw++;
+let h=Math.floor(sw/3600);
+let m=Math.floor((sw%3600)/60);
+let s=sw%60;
+document.getElementById("sw").innerText=
+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+},1000);
+}
+
+function pauseSW(){
+clearInterval(swInt);
+swInt=null;
+}
+
+function resetSW(){
+pauseSW();
+sw=0;
+document.getElementById("sw").innerText="00:00:00";
+}
+
+</script>
+
+</body>
+</html>
