@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Relógio Pro</title>
 
+<!-- 🔗 MANIFEST (PWA) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111111">
+
+<!-- iOS support (opcional mas bom pro PWA) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <style>
 body{
 margin:0;
@@ -32,6 +40,7 @@ border:0;
 background:#222;
 color:#fff;
 font-size:14px;
+cursor:pointer;
 }
 
 .tabs button.active{
@@ -65,6 +74,7 @@ border:0;
 border-radius:8px;
 background:#2f7fff;
 color:#fff;
+cursor:pointer;
 }
 
 button.danger{
@@ -91,25 +101,28 @@ border:0;
 <button onclick="openTab('stopwatch',this)">Cronômetro</button>
 </div>
 
-<!-- RELÓGIO -->
+<!-- CLOCK -->
 <div id="clock" class="page active">
-<div id="time" class="big">00:00:00</div>
+<div id="time" class="big">--:--:--</div>
 <div id="date" class="center"></div>
 </div>
 
 <!-- TIMER -->
 <div id="timer" class="page">
 <input id="minutes" type="number" placeholder="Minutos">
-<div id="timerDisplay" class="big">00:00</div>
+<div id="timerDisplay" class="big">00:00.000</div>
+
 <div class="center">
 <button class="action" onclick="startTimer()">Iniciar</button>
+<button class="action" onclick="pauseTimer()">Pausar</button>
 <button class="action danger" onclick="resetTimer()">Resetar</button>
 </div>
 </div>
 
-<!-- CRONÔMETRO -->
+<!-- STOPWATCH -->
 <div id="stopwatch" class="page">
-<div id="sw" class="big">00:00:00</div>
+<div id="sw" class="big">00:00.000</div>
+
 <div class="center">
 <button class="action" onclick="startSW()">Start</button>
 <button class="action" onclick="pauseSW()">Pause</button>
@@ -119,7 +132,20 @@ border:0;
 
 <script>
 
-// Tabs
+/* =========================
+   PWA SERVICE WORKER
+========================= */
+if ("serviceWorker" in navigator) {
+window.addEventListener("load", () => {
+navigator.serviceWorker.register("sw.js")
+.then(() => console.log("SW registrado"))
+.catch(err => console.log("Erro SW:", err));
+});
+}
+
+/* =========================
+   TAB SYSTEM
+========================= */
 function openTab(id,btn){
 document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
 document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));
@@ -127,72 +153,120 @@ document.getElementById(id).classList.add("active");
 btn.classList.add("active");
 }
 
-// CLOCK
+/* =========================
+   CLOCK
+========================= */
 function updateClock(){
-let d = new Date();
-document.getElementById("time").innerText =
+const d = new Date();
+
+document.getElementById("time").textContent =
 d.toLocaleTimeString("pt-BR");
 
-document.getElementById("date").innerText =
+document.getElementById("date").textContent =
 d.toLocaleDateString("pt-BR",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
 }
 setInterval(updateClock,1000);
 updateClock();
 
-// TIMER
-let t=0, tInt;
+/* =========================
+   FORMATADOR
+========================= */
+function formatTime(ms){
+let totalSec = ms / 1000;
+let m = Math.floor(totalSec / 60);
+let s = Math.floor(totalSec % 60);
+let msPart = Math.floor(ms % 1000);
 
-function startTimer(){
-clearInterval(tInt);
-t = parseInt(document.getElementById("minutes").value||0)*60;
+return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${String(msPart).padStart(3,"0")}`;
+}
 
-tInt = setInterval(()=>{
-t--;
-updateTimer();
-if(t<=0){
-clearInterval(tInt);
-alert("Tempo acabou!");
-}
-},1000);
-}
+/* =========================
+   TIMER
+========================= */
+let timerRunning = false;
+let timerStart = 0;
+let timerDuration = 0;
+let timerRAF;
 
 function updateTimer(){
-let m=Math.floor(t/60);
-let s=t%60;
-document.getElementById("timerDisplay").innerText=
-String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+if(!timerRunning) return;
+
+let now = performance.now();
+let remaining = timerDuration - (now - timerStart);
+
+if(remaining <= 0){
+document.getElementById("timerDisplay").textContent = "00:00.000";
+timerRunning = false;
+alert("Tempo acabou!");
+return;
+}
+
+document.getElementById("timerDisplay").textContent = formatTime(remaining);
+timerRAF = requestAnimationFrame(updateTimer);
+}
+
+function startTimer(){
+if(timerRunning) return;
+
+let input = parseInt(document.getElementById("minutes").value || 0);
+timerDuration = input * 60000;
+
+timerStart = performance.now();
+timerRunning = true;
+updateTimer();
+}
+
+function pauseTimer(){
+timerRunning = false;
+cancelAnimationFrame(timerRAF);
 }
 
 function resetTimer(){
-clearInterval(tInt);
-t=0;
-updateTimer();
+timerRunning = false;
+cancelAnimationFrame(timerRAF);
+document.getElementById("timerDisplay").textContent = "00:00.000";
 }
 
-// STOPWATCH
-let sw=0, swInt;
+/* =========================
+   STOPWATCH
+========================= */
+let swRunning = false;
+let swStart = 0;
+let swElapsed = 0;
+let swRAF;
+
+function updateSW(){
+if(!swRunning) return;
+
+let now = performance.now();
+let total = swElapsed + (now - swStart);
+
+document.getElementById("sw").textContent = formatTime(total);
+
+swRAF = requestAnimationFrame(updateSW);
+}
 
 function startSW(){
-if(swInt) return;
-swInt=setInterval(()=>{
-sw++;
-let h=Math.floor(sw/3600);
-let m=Math.floor((sw%3600)/60);
-let s=sw%60;
-document.getElementById("sw").innerText=
-String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
-},1000);
+if(swRunning) return;
+
+swRunning = true;
+swStart = performance.now();
+updateSW();
 }
 
 function pauseSW(){
-clearInterval(swInt);
-swInt=null;
+if(!swRunning) return;
+
+swRunning = false;
+swElapsed += performance.now() - swStart;
+cancelAnimationFrame(swRAF);
 }
 
 function resetSW(){
-pauseSW();
-sw=0;
-document.getElementById("sw").innerText="00:00:00";
+swRunning = false;
+swElapsed = 0;
+cancelAnimationFrame(swRAF);
+document.getElementById("sw").textContent = "00:00.000";
 }
 
 </script>
